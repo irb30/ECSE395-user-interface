@@ -53,6 +53,7 @@ void loop () {
         // Add condition that RFID is not detected
         // See if you can make the light remain on even after the container is removed from the scale until the user taps a RFID sticker
     if (analogRead(touchPin) > 1500) {
+        tareOffset = 0; // This will reset the tare to zero because the touch is detected
         Serial.println("Weight Not Stored! Remember to tap the RFID Tag!");  // Prints out context information of what the code is doing
 
         lcd.clear();
