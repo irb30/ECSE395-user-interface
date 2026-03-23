@@ -29,10 +29,8 @@ const int downButton = 15;  // Navigate down in menu
 bool lastDownButtonState = HIGH;
 
 const int powerButton = 4;  // GPIO 4
-bool lastPowerButtonState = HIGH;
+bool lastPowerButtonState = LOW;
 bool screenOn = false;       // tracks LCD state
-int holdCounter = 0;        // counts how long button is held
-const int holdThreshold = 20; // number of loop iterations needed to trigger long press
 
 enum ScreenState {
     MAIN_SCREEN,
@@ -61,6 +59,7 @@ void setup() {
     pinMode(menuButton, INPUT_PULLUP);
     pinMode(upButton, INPUT_PULLUP); 
     pinMode(downButton, INPUT_PULLUP);
+    pinMode(powerButton, INPUT_PULLUP);
 
     pinMode(G, OUTPUT); // This defines the pin G as output
     pinMode(Y, OUTPUT); // This defines th pin Y as output
@@ -78,28 +77,22 @@ void loop () {
 
     bool powerReading = digitalRead(powerButton);
 
-    if (powerReading == LOW) {
-    // Button is being held
-    holdCounter++;
-        if (holdCounter >= holdThreshold) {
-            screenOn = !screenOn;     // toggle screen
-            if (screenOn) {
-                lcd.backlight();
-                Serial.println("Screen ON");
-            } else {
-                lcd.noBacklight();
-                Serial.println("Screen OFF");
-            }
-            holdCounter = 0; // reset counter so it only toggles once
+    // Detect button press (HIGH → LOW transition)
+    if (lastPowerButtonState == HIGH && powerReading == LOW) {
+    screenOn = !screenOn;  // toggle screen
+
+        if (screenOn) {
+            lcd.backlight();
+            Serial.println("Screen ON");
+        } else {
+            lcd.noBacklight();
+            Serial.println("Screen OFF");
         }
-    } 
-    else {
-    // Button released, reset counter
-    holdCounter = 0;
+
+        delay(200); // simple debounce
     }
 
-    // Save last state (optional if you want edge detection elsewhere)
-    lastPowerButtonState = powerReading;
+    lastPowerButtonState = powerReading;    
 
     if (screenOn) {
         // TARE BUTTON
