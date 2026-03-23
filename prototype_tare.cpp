@@ -9,11 +9,15 @@ LiquidCrystal_I2C lcd(0x27, 16, 2); // I2C LCD address, 16 columns, 2 rows
 
 const int sensorPin = A0; // The photoresistor module pin was connected to the A0 pin in the ESP32
 const int touchPin = A1; // The touch module signal pin was connected to the A1 pin in the ESP32
+
 const int G = 12; // The traffic light LED pin G (for the green light) was connected to the D12 pin in the ESP32
 const int Y = 27; // The traffic light LED pin Y (for the yellow light) was connected to the D27 pin in the ESP32
 const int R = 33; // The traffic light LED pin R (for the red light) was connected to the D33 pin in the ESP32
+
 const int tareButton = 32; // GPIO32 for tare button
 int tareOffset = 0; // Stores current weight based on the tared valued
+bool tareActive = false; // Tracks if tare is ON or OFF
+bool lastButtonState = HIGH; // Previous button state
 
 void setup() {
     Wire.begin(22,20); // SDA, SCL for ESP32 connections
@@ -23,7 +27,9 @@ void setup() {
 
     pinMode(sensorPin, INPUT); // This defines the photoresistor signal pin as input
     pinMode(touchPin, INPUT); // This defines the touch signal pin as input
+    
     pinMode(tareButton, INPUT_PULLUP); // Use internal pull-up for button
+
     pinMode(G, OUTPUT); // This defines the pin G as output
     pinMode(Y, OUTPUT); // This defines th pin Y as output
     pinMode(R, OUTPUT); // This defines the pin R as output
@@ -35,13 +41,26 @@ void setup() {
 }
 
 void loop () {
-    // Check if tare button is pressed
-        if(digitalRead(tareButton) == LOW){
-            tareOffset = analogRead(sensorPin); // store current value as tare
-            Serial.print("Tare pressed! New offset = ");
-            Serial.println(tareOffset);
-            delay(300); // debounce
-        }
+    // Check the state of the tare button
+    bool currentButtonState = digitalRead(tareButton);
+
+    // Detect button press (HIGH → LOW transition)
+    if (lastButtonState == HIGH && currentButtonState == LOW) {
+    tareActive = !tareActive; // Toggle state
+
+    if (tareActive) {
+        tareOffset = analogRead(sensorPin); // store current value as tare
+        Serial.print("Tare ON. New Offset = ");
+        Serial.println(tareOffset);
+    } else {
+        tareOffset = 0;
+        Serial.println("Tare OFF.");
+    }
+
+    delay(200); 
+    }
+    lastButtonState = currentButtonState;
+    
         // Read sensor and apply tare
         int potValue = analogRead(sensorPin) - tareOffset; // subtract tare
 
