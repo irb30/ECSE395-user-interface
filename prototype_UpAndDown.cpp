@@ -2,7 +2,7 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-// Interface Prototype 3: This prototype tested the button module for enter/menu button on top of tare button, testing photoresistor, touch module, LED, and LCD
+// Interface Prototype 4: This prototype tested the push button for up and down on top of enter/menu, tare button, testing photoresistor, touch module, LED, and LCD
 
 LiquidCrystal_I2C lcd(0x27, 16, 2); // I2C LCD address, 16 columns, 2 rows
 
@@ -22,6 +22,11 @@ bool lastButtonState = HIGH; // Previous button state
 const int menuButton = 14; //GPIO14 for menu button
 bool menuState = false; // false = normal screen, true = menu
 bool lastMenuButtonState = HIGH; 
+
+const int upButton = 13;    // Navigate up in menu
+bool lastUpButtonState = HIGH;
+const int downButton = 15;  // Navigate down in menu
+bool lastDownButtonState = HIGH;
 
 enum ScreenState {
     MAIN_SCREEN,
@@ -47,8 +52,9 @@ void setup() {
     pinMode(touchPin, INPUT); // This defines the touch signal pin as input
     
     pinMode(tareButton, INPUT_PULLUP); // Use internal pull-up for button
-
-    pinMode(menuButton, INPUT_PULLUP); //Use internal pull up for button
+    pinMode(menuButton, INPUT_PULLUP);
+    pinMode(upButton, INPUT_PULLUP); 
+    pinMode(downButton, INPUT_PULLUP);
 
     pinMode(G, OUTPUT); // This defines the pin G as output
     pinMode(Y, OUTPUT); // This defines th pin Y as output
@@ -63,6 +69,7 @@ void setup() {
 void loop () {
     // TARE BUTTON
     // -----------
+    // NOTE: you have to press and hold the button for it to tare or cancel out the tare
     // Check the state of the tare button
     bool currentButtonState = digitalRead(tareButton);
 
@@ -88,6 +95,7 @@ void loop () {
 
     // ENTER/MENU BUTTON
     // -----------------
+    // Note: you have to press and hold the button for it to enter the menu
     // Check the state of the enter/menu button
     bool menuReading = digitalRead(menuButton);
 
@@ -103,8 +111,8 @@ void loop () {
             Serial.println("Item OPEN");
         }
         else if (currentScreen == ITEM_SCREEN) {
-            currentScreen = MENU_SCREEN;
-            Serial.println("Back to MENU");
+            currentScreen = MAIN_SCREEN;
+            Serial.println("Back to MAIN");
         }
 
         lcd.clear();
@@ -210,22 +218,38 @@ void loop () {
      // MENU SCREEN
     // ------------
     else if (currentScreen == MENU_SCREEN) {
+        // Read button states
+        bool upReading = digitalRead(upButton);
+        bool downReading = digitalRead(downButton);
 
-        lcd.setCursor(0,0);
-        lcd.print("Select Item:");
+        // UP button pressed
+        if (lastUpButtonState == HIGH && upReading == LOW) {
+            menuIndex--;
+            if (menuIndex < 0) menuIndex = itemCount - 1;
 
-        lcd.setCursor(0,1);
-        lcd.print(">");
-        lcd.print(items[menuIndex]);
+            lcd.clear();
+            delay(200); 
+        }
 
-        // Scroll with touch sensor
-        if (analogRead(touchPin) > 1500) {
+        // DOWN button pressed
+        if (lastDownButtonState == HIGH && downReading == LOW) {
             menuIndex++;
             if (menuIndex >= itemCount) menuIndex = 0;
 
             lcd.clear();
-            delay(300);
+            delay(200);
         }
+
+        // Save button states
+        lastUpButtonState = upReading;
+        lastDownButtonState = downReading;
+
+        // Display menu
+        lcd.setCursor(0,0);
+        lcd.print("Select Item:");
+        lcd.setCursor(0,1);
+        lcd.print(">");
+        lcd.print(items[menuIndex]);
     }
 
     // ITEM SCREEN
