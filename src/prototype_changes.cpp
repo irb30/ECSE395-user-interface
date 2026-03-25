@@ -37,7 +37,7 @@ float weight;
 
 //Calibration Function
 const float SLOPE = -2.4e-6;
-const float Y_INCPT = 0.71;  
+const float Y_INCPT = 0.651;  
 
 //Scale Instance
 HX711 scale;
@@ -48,7 +48,16 @@ enum ScreenState {
     ITEM_SCREEN
 };
 
+enum ReadingState {
+    noID_message,
+    noID_reading,
+    posID_low_message,
+    posID_low_reading,
+    posID_high
+};
+
 ScreenState currentScreen = MAIN_SCREEN;
+ReadingState readingState = noID_message;
 int menuIndex = 0;
 
 // Example stored data
@@ -66,13 +75,13 @@ String items[itemCount] = {
 };
 
 int containerWeights[itemCount] = {
-    0,     // No container
+    0,  // No container
     0,  // Flour
-    0,   // Almond Flour
+    0,  // Almond Flour
     0,  // GF Flour
     0,  // Rye Flour
-    0,   // Cassava Flour
-    0,   // Cornmeal
+    0,  // Cassava Flour
+    0,  // Cornmeal
     0   // Sugar
 };
 
@@ -98,12 +107,20 @@ int weights[itemCount] = {
     700,   // Cornmeal
     1300   // Sugar
 };
+
 int incomingItem = 0; // Add Sai's code to loop later
 
+//Intervals
+const unsigned long time_debounce = 100;
+unsigned long currentTime = 0;
 unsigned long lastSaveTime = 0;
 const unsigned long saveInterval = 5000; // checks to save every 5 seconds
+unsigned long time_Main_noID = 0;
+unsigned long time_Main_posID_low = 0;
 
+/*-----------SETUP FUNCTION-----------*/
 void setup() {
+
     Wire.begin(22,20); // SDA, SCL for ESP32 connections
 
     lcd.init(); // This initializes LCD
@@ -125,12 +142,13 @@ void setup() {
 
     lcd.setCursor(0,0);
     lcd.print("System Ready");
+
 }
 
+/*-----------SUPERLOOP-----------*/
 void loop () {
     // POWER BUTTON
     // ------------
-
     bool powerReading = digitalRead(powerButton);
 
     // Detect button press (HIGH → LOW transition)
@@ -145,25 +163,35 @@ void loop () {
             Serial.println("Screen OFF");
         }
 
-        delay(200); // simple debounce
+        delay(time_debounce); // simple debounce
     }
 
-    lastPowerButtonState = powerReading;    
+    lastPowerButtonState = powerReading;   
+
+    screenOn = true;    //temp debug
+    lcd.backlight();
 
     if (screenOn) {
+        //Get current time
+        unsigned long tempTime = millis();
+        //Serial.println((tempTime - currentTime));
+        currentTime = tempTime;
+
         // SCALE
-        // ------
-        //Read scale every second
-        if (scale.wait_ready_timeout(1000)) {
+        // -----
+        //Read scale
+        if (scale.wait_ready_timeout(100)) {
             long reading = scale.read();
+            Serial.println(reading);
+            delay(200);
             weight = (float)reading * SLOPE + Y_INCPT;  //convert value
-            weight = weight * 1000;
-            Serial.print("HX711 reading: ");
-            Serial.println((int)(weight*1000));
+            weight = weight * 1000;                     //convert to grams
+            /* Serial.print("HX711 reading: ");
+            Serial.println((int)(weight*1000)); */
         } else {
             Serial.println("HX711 not found.");
         }
-        delay(200);
+        //delay(200);
 
         // SET EMPTY CONTAINER WEIGHT
         // --------------------------
@@ -212,7 +240,7 @@ void loop () {
                 Serial.println("Tare OFF.");
             }
 
-            delay(200); 
+            delay(time_debounce); 
         }
         lastButtonState = currentButtonState;
         
@@ -229,9 +257,8 @@ void loop () {
                 menuIndex = incomingItem;
             }
                 
-            // CHECK STABILITY AND STORE MEASURMENT
+            // CHECK STABILITY AND STORE MEASUREMENT
             static int lastWeight = 0;
-            unsigned long currentTime = millis();
 
             if (currentTime - lastSaveTime >= saveInterval) {
                 lastSaveTime = currentTime;
@@ -278,7 +305,7 @@ void loop () {
             }
 
             lcd.clear();
-            delay(200);
+            delay(time_debounce);
         }
         lastMenuButtonState = menuReading;
 
@@ -292,85 +319,95 @@ void loop () {
                 // Changes that need to be made:
                 // Add condition that RFID is not detected
                 // See if you can make the light remain on even after the container is removed from the scale until the user taps a RFID sticker
+
+            char weightChars[6];
+            snprintf(weightChars, sizeof(weightChars), "%+05d", weightValue);
+            char netWeightChars[6];
+            snprintf(netWeightChars, sizeof(netWeightChars), "%+05d", netWeight);
             if (weightValue > 5 && menuIndex == 0) {
-                Serial.println("Weight Not Stored! Remember to tap the RFID Tag!");  // Prints out context information of what the code is doing
+                //Serial.println("Weight Not Stored! Remember to tap the RFID Tag!");  // Prints out context information of what the code is doing
+                if (currentTime - time_Main_noID < 500) {
+                    if (readingState != noID_message) {
+                        lcd.clear();
+                        readingState = noID_message;
+                    }
+                    lcd.setCursor(0,0);
+                    lcd.print("Tap RFID Tag!");
+                    lcd.setCursor(0,1);
+                    lcd.print("Weight Not Saved");
+                    digitalWrite(G,LOW); // The green light is turned off
+                    digitalWrite(Y,HIGH); // The yellow light is turned on
+                    digitalWrite(R,LOW); // The red light is turned off
+                } else if (currentTime - time_Main_noID < 2000) {
+                    if (readingState != noID_reading) {
+                        lcd.clear();
+                        readingState = noID_reading;
+                    }
+                    lcd.setCursor(0,0);
+                    lcd.print("Tap RFID Tag!");
+                    lcd.setCursor(0,1);
+                    lcd.print(weightChars); // Print the value for the scale value
+                    lcd.setCursor(15,1);
+                    lcd.print("g");
+                    digitalWrite(G,LOW); // The green light is turned off
+                    digitalWrite(Y,LOW); // The yellow light is turned off
+                    digitalWrite(R,LOW);
+                } else {time_Main_noID = currentTime;}
 
-                lcd.clear();
-                lcd.setCursor(0,0);
-                lcd.print("Tap RFID Tag!");
-                lcd.setCursor(0,1);
-                lcd.print("Weight Not Saved");
-                delay(1000);
-
-                lcd.clear();
-                lcd.setCursor(0,0);
-                lcd.print("Tap RFID Tag!");
-                lcd.setCursor(0,1);
-                lcd.print(weightValue); // Print the value for the scale value
-                lcd.setCursor(15,1);
-                lcd.print("g"); // Print gram units to the last column in the row where the value is being printed
-                delay(1000);
-
-                digitalWrite(G,LOW); // The green light is turned off
-                digitalWrite(Y,HIGH); // The yellow light is turned on
-                digitalWrite(R,LOW); // The red light is turned off
-                delay(250); // The yellow light remains on for 0.5 seconds (500 ms)
-
-                digitalWrite(G,LOW); // The green light is turned off
-                digitalWrite(Y,LOW); // The yellow light is turned off
-                digitalWrite(R,LOW); // The red light is turned off
-                delay(250); // All the lights are turned off for 0.5 seconds
             }
             // If the ingredient is below the threshold:
             // Input: Sensor detects a weight value that is below the threshold
             // Output: Red Blinking light
             // Output: Message on the LCD screen alternates with weight displayed
             else if (menuIndex > 0 && netWeight < thresholds[menuIndex]) {
-                Serial.println("Ingredient Weight is Below Threshold!");
-                
-                lcd.clear();
-                lcd.setCursor(0,0);
-                lcd.print("Weight Low!");
-                lcd.setCursor(0,1);
-                lcd.print("Refill Needed");
-                delay(1000);
+                //Serial.println("Ingredient Weight is Below Threshold!");
 
-                lcd.clear();
-                lcd.setCursor(0,0);
-                lcd.print("NetWeight =");
-                lcd.setCursor(0,1);
-                lcd.print(netWeight); // Print the scale value
-                lcd.setCursor(15,1);
-                lcd.print("g"); // Print gram units to the last column in the row where the value is being printed
-                delay(1000);
+                if (currentTime - time_Main_posID_low < 500) {
+                    if (readingState != posID_low_message) {
+                        lcd.clear();
+                        readingState = posID_low_message;
+                    }
+                    lcd.setCursor(0,0);
+                    lcd.print("Weight Low!");
+                    lcd.setCursor(0,1);
+                    lcd.print("Refill Needed");
+                    digitalWrite(G,LOW); // The green light is turned off
+                    digitalWrite(Y,LOW); // The yellow light is turned off
+                    digitalWrite(R,HIGH);
+                } else if (currentTime - time_Main_posID_low < 2000) {
+                    if (readingState != posID_low_reading) {
+                        lcd.clear();
+                        readingState = posID_low_reading;
+                    }
+                    lcd.setCursor(0,0);
+                    lcd.print("NetWeight =");
+                    lcd.setCursor(0,1);
+                    lcd.print(netWeightChars); // Print the scale value
+                    lcd.setCursor(15,1);
+                    lcd.print("g"); // Print gram units to the last column in the row where the value is being printed
+                    digitalWrite(G,LOW); // The green light is turned off
+                    digitalWrite(Y,LOW); // The yellow light is turned off
+                    digitalWrite(R,LOW); // The red light is turned off
+                } else {time_Main_posID_low = currentTime;}
 
-                digitalWrite(G,LOW); // The green light is turned off
-                digitalWrite(Y,LOW); // The yellow light is turned off
-                digitalWrite(R,HIGH); // The red light is turned on
-                delay(250); // The red light remains on for 0.5 seconds (500 ms)
-
-                digitalWrite(G,LOW); // The green light is turned off
-                digitalWrite(Y,LOW); // The yellow light is turned off
-                digitalWrite(R,LOW); // The red light is turned off
-                delay(250); // All the lights are turned off for 0.5 seconds
             }
             // Normal conditions:
             // Output: Green Light remains on
             // Output: Only weight is displayed on the LCD screen
             else {
-                digitalWrite(G,HIGH); // The green light is turned on
-                digitalWrite(Y,LOW); // The yellow light is turned off
-                digitalWrite(R,LOW); // The red light is turned off
-                delay(500); // The green light remains on for 0.5 seconds (500 ms)
-
-                lcd.clear();
+                if (readingState != posID_high) {
+                        lcd.clear();
+                        readingState = posID_high;
+                    }
                 lcd.setCursor(0,0);
                 lcd.print("Weight:");
                 lcd.setCursor(0,1);
-                lcd.print(weightValue); // Print scale value
+                lcd.print(weightChars); // Print scale value
                 lcd.setCursor(15,1);
                 lcd.print("g"); // Print gram units to the last column in the row where the value is being printed
-                delay(300);
+                digitalWrite(G,HIGH); // The green light is turned on
+                digitalWrite(Y,LOW); // The yellow light is turned off
+                digitalWrite(R,LOW); // The red light is turned off
             }
         }
 
@@ -387,7 +424,7 @@ void loop () {
                 if (menuIndex < 0) menuIndex = itemCount - 1;
 
                 lcd.clear();
-                delay(200); 
+                delay(time_debounce); 
             }
 
             // DOWN button pressed
@@ -396,7 +433,7 @@ void loop () {
                 if (menuIndex >= itemCount) menuIndex = 0;
 
                 lcd.clear();
-                delay(200);
+                delay(time_debounce);
             }
 
             // Save button states
