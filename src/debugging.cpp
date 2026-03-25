@@ -161,6 +161,7 @@ void loop () {
         } else {
             lcd.noBacklight();
             Serial.println("Screen OFF");
+            lcd.clear();
         }
 
         delay(time_debounce); // simple debounce
@@ -169,7 +170,7 @@ void loop () {
     lastPowerButtonState = powerReading;   
 
     // screenOn = true;    //temp debug
-    lcd.backlight();
+    // lcd.backlight();
 
     if (screenOn) {
         //Get current time
@@ -186,7 +187,7 @@ void loop () {
             // delay(200);
             weight = (float)reading * SLOPE + Y_INCPT;  //convert value
             weight = weight * 1000;                     //convert to grams
-            Serial.print("HX711 reading: ");
+            // Serial.print("HX711 reading: ");
             Serial.println((int)(weight*1000));
         } else {
             Serial.println("HX711 not found.");
@@ -201,18 +202,20 @@ void loop () {
 
         // Detect button press (HIGH → LOW transition)
         if (lastButtonState == HIGH && currentButtonState == LOW) {
+            if (currentScreen == MENU_SCREEN) {
             tareActive = !tareActive; // Toggle state
 
-            if (tareActive) {
-                tareOffset = weight; // store current value as tare
-                Serial.print("Tare ON. New Offset = ");
-                Serial.println(tareOffset);
-            } else {
-                tareOffset = 0;
-                Serial.println("Tare OFF.");
-            }
+                if (tareActive) {
+                    tareOffset = weight; // store current value as tare
+                    Serial.print("Tare ON. New Offset = ");
+                    Serial.println(tareOffset);
+                } else {
+                    tareOffset = 0;
+                    Serial.println("Tare OFF.");
+                }
 
-            delay(time_debounce); 
+                delay(time_debounce); 
+            }
         }
         lastButtonState = currentButtonState;
         
