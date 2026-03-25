@@ -5,6 +5,7 @@
 
 // Prototype 6: MVP
 // Remove photoresistor and touch module
+// Container Memory
 
 LiquidCrystal_I2C lcd(0x27, 16, 2); // I2C LCD address, 16 columns, 2 rows
 
@@ -29,6 +30,10 @@ bool lastDownButtonState = HIGH;
 const int powerButton = 4;  // GPIO 4
 bool lastPowerButtonState = LOW;
 bool screenOn = false;       // tracks LCD state
+
+// Check tare and menu buttons for empty container weight storage
+bool tarePressed = (digitalRead(tareButton) == LOW);
+bool menuPressed = (digitalRead(menuButton) == LOW);
 
 const int LOADCELL_DOUT_PIN = 21;
 const int LOADCELL_SCK_PIN = 19;
@@ -64,6 +69,17 @@ String items[itemCount] = {
     "Sugar"
 };
 
+int containerWeights[itemCount] = {
+    0,     // No container
+    0,  // Flour
+    0,   // Almond Flour
+    0,  // GF Flour
+    0,  // Rye Flour
+    0,   // Cassava Flour
+    0,   // Cornmeal
+    0   // Sugar
+};
+
 int weights[itemCount] = {
     0,     // No container
     1000,  // Flour
@@ -74,7 +90,6 @@ int weights[itemCount] = {
     700,   // Cornmeal
     1300   // Sugar
 };
-
 int incomingItem = 0; // Change with Sai's code
 
 unsigned long lastSaveTime = 0;
@@ -141,6 +156,30 @@ void loop () {
             Serial.println("HX711 not found.");
         }
         delay(200);
+
+        // SET EMPTY CONTAINER WEIGHT
+        // --------------------------
+        // SAVE EMPTY CONTAINER WEIGHT (tare + menu together)
+        static bool comboHandled = false;
+
+        if (tarePressed && menuPressed && !comboHandled) {
+            
+            if (menuIndex > 0 && menuIndex < itemCount) {
+                containerWeights[menuIndex] = weight;  // store raw weight
+
+                Serial.print("Saved EMPTY container weight for ");
+                Serial.print(items[menuIndex]);
+                Serial.print(" = ");
+                Serial.println(containerWeights[menuIndex]);
+            }
+
+            comboHandled = true; // prevent repeat spam
+        }
+
+        // Reset when buttons released
+        if (!tarePressed || !menuPressed) {
+            comboHandled = false;
+        }
         
         // TARE BUTTON
         // -----------
@@ -187,12 +226,16 @@ void loop () {
 
                     // Check if weight hasn't changed much
                     if (abs(weightValue - lastWeight) < 5 && weightValue > 10) {
-                        weights[menuIndex] = weightValue; //STORES WEIGHT
+                        // STORES WEIGHT
+                        int netWeight = weightValue - containerWeights[menuIndex];
+                        if (netWeight > 0) {
+                            weights[menuIndex] = netWeight;
 
-                        Serial.print("Stable auto-save for ");
-                        Serial.print(items[menuIndex]);
-                        Serial.print(" = ");
-                        Serial.println(weightValue);
+                            Serial.print("Saved NET weight for ");
+                            Serial.print(items[menuIndex]);
+                            Serial.print(" = ");
+                            Serial.println(netWeight);
+                        }
                     }                
                 }
                 lastWeight = weightValue;
