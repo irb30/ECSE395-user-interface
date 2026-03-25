@@ -174,15 +174,15 @@ void loop () {
         // Read sensor and apply tare if applicable
         int weightValue = weight - tareOffset; // subtract tare
 
-                // CONTAINER MEMORY
+        // CONTAINER MEMORY
         // ----------------
 
-        // SELECT ITEM BASED ON CONTAINER IDENTIFICATION NUMBER
-        if (incomingItem >= 0 && incomingItem < itemCount) {
-            menuIndex = incomingItem;
-        }
-            
-            // CHECK TO STORE MEASUREMENT
+            // SELECT ITEM BASED ON CONTAINER IDENTIFICATION NUMBER
+            if (incomingItem >= 0 && incomingItem < itemCount) {
+                menuIndex = incomingItem;
+            }
+                
+            // CHECK STABILITY AND STORE MEASURMENT
             static int lastWeight = 0;
             unsigned long currentTime = millis();
 
@@ -193,15 +193,14 @@ void loop () {
 
                     // Check if weight hasn't changed much
                     if (abs(weightValue - lastWeight) < 5 && weightValue > 10) {
-                        weights[menuIndex] = weightValue;
+                        weights[menuIndex] = weightValue; //STORES WEIGHT
 
                         Serial.print("Stable auto-save for ");
                         Serial.print(items[menuIndex]);
                         Serial.print(" = ");
                         Serial.println(weightValue);
-                    }
+                    }                
                 }
-
                 lastWeight = weightValue;
             }
 
@@ -243,7 +242,6 @@ void loop () {
                 // Add condition that RFID is not detected
                 // See if you can make the light remain on even after the container is removed from the scale until the user taps a RFID sticker
             if (weightValue > 5) {
-                // tareOffset = 0; // This will reset the tare to zero because the touch is detected
                 Serial.println("Weight Not Stored! Remember to tap the RFID Tag!");  // Prints out context information of what the code is doing
 
                 lcd.clear();
