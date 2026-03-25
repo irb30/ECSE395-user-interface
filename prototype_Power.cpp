@@ -5,7 +5,8 @@
 
 //Ben was here
 
-// Interface Prototype 5: This prototype tested the push button for on/off on top of up, down, enter/menu, and tare button, testing photoresistor, touch module, LED, and LCD
+// Interface Prototype 5: This prototype tested the push button for on/off and integrated the scale code
+// in addition to up, down, enter/menu, and tare button, testing photoresistor, touch module, LED, and LCD
 
 LiquidCrystal_I2C lcd(0x27, 16, 2); // I2C LCD address, 16 columns, 2 rows
 

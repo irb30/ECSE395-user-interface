@@ -3,13 +3,10 @@
 #include <LiquidCrystal_I2C.h>
 #include "HX711.h"
 
-// Interface Prototype 5: This prototype tested the push button for on/off on top of up, down, enter/menu, and tare button, testing photoresistor, touch module, LED, and LCD
+// Prototype 6: MVP
+// Remove photoresistor and touch module
 
 LiquidCrystal_I2C lcd(0x27, 16, 2); // I2C LCD address, 16 columns, 2 rows
-
-
-const int sensorPin = A0; // The photoresistor module pin was connected to the A0 pin in the ESP32
-const int touchPin = A1; // The touch module signal pin was connected to the A1 pin in the ESP32
 
 const int G = 12; // The traffic light LED pin G (for the green light) was connected to the D12 pin in the ESP32
 const int Y = 27; // The traffic light LED pin Y (for the yellow light) was connected to the D27 pin in the ESP32
@@ -88,9 +85,6 @@ void setup() {
 
     lcd.init(); // This initializes LCD
     lcd.backlight(); // This turns on LCD backlight
-
-    pinMode(sensorPin, INPUT); // This defines the photoresistor signal pin as input
-    pinMode(touchPin, INPUT); // This defines the touch signal pin as input
     
     pinMode(tareButton, INPUT_PULLUP); // Use internal pull-up for button
     pinMode(menuButton, INPUT_PULLUP);
@@ -235,7 +229,7 @@ void loop () {
         // ----------
         if (currentScreen == MAIN_SCREEN) {
             // If there is a container on top of the scale but RFID is not detected:
-            // Input: Touch sensor is activated (Something is placed on top of the scale)
+            // Input: Scale value is greater than 5g (Something is placed on top of the scale)
             // Output: Yellow blinking light
             // Output: Message on the LCD screen alternates with weight displayed
                 // Changes that need to be made:
@@ -255,7 +249,7 @@ void loop () {
                 lcd.setCursor(0,0);
                 lcd.print("Tap RFID Tag!");
                 lcd.setCursor(0,1);
-                lcd.print(weightValue); // Print the value for the photoresistor
+                lcd.print(weightValue); // Print the value for the scale value
                 lcd.setCursor(15,1);
                 lcd.print("g"); // Print gram units to the last column in the row where the value is being printed
                 delay(1000);
@@ -271,11 +265,9 @@ void loop () {
                 delay(250); // All the lights are turned off for 0.5 seconds
             }
             // If the ingredient is below the threshold:
-            // Input: Sensor detects a value that is below the threshold (currently using photoresistor value)
+            // Input: Sensor detects a weight value that is below the threshold
             // Output: Red Blinking light
             // Output: Message on the LCD screen alternates with weight displayed
-                // Changes that need to be made:
-                // Instead of using photoresistor values, we need to use the scale values.
             else if (weightValue < 500) {
                 Serial.println("Ingredient Weight is Below Threshold!");
                 
@@ -290,7 +282,7 @@ void loop () {
                 lcd.setCursor(0,0);
                 lcd.print("Weight Low!");
                 lcd.setCursor(0,1);
-                lcd.print(weightValue); // Print the value for the photoresistor
+                lcd.print(weightValue); // Print the scale value
                 lcd.setCursor(15,1);
                 lcd.print("g"); // Print gram units to the last column in the row where the value is being printed
                 delay(1000);
@@ -318,7 +310,7 @@ void loop () {
                 lcd.setCursor(0,0);
                 lcd.print("Weight:");
                 lcd.setCursor(0,1);
-                lcd.print(weightValue); // Print the value for the photoresistor
+                lcd.print(weightValue); // Print scale value
                 lcd.setCursor(15,1);
                 lcd.print("g"); // Print gram units to the last column in the row where the value is being printed
                 delay(300);
