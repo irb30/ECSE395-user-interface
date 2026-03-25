@@ -31,10 +31,6 @@ const int powerButton = 4;  // GPIO 4
 bool lastPowerButtonState = LOW;
 bool screenOn = false;       // tracks LCD state
 
-// Check tare and menu buttons for empty container weight storage
-bool tarePressed = (digitalRead(tareButton) == LOW);
-bool menuPressed = (digitalRead(menuButton) == LOW);
-
 const int LOADCELL_DOUT_PIN = 21;
 const int LOADCELL_SCK_PIN = 19;
 float weight;
@@ -80,6 +76,18 @@ int containerWeights[itemCount] = {
     0   // Sugar
 };
 
+// Threshold for each of the containers
+int thresholds[itemCount] = {
+    0,    // No container
+    500,  // Flour
+    500,  // Almond Flour
+    500,  // GF Flour
+    500, // Rye Flour
+    500,  // Cassava Flour
+    500,  // Cornmeal
+    500  // Sugar
+};
+
 int weights[itemCount] = {
     0,     // No container
     1000,  // Flour
@@ -90,7 +98,7 @@ int weights[itemCount] = {
     700,   // Cornmeal
     1300   // Sugar
 };
-int incomingItem = 0; // Change with Sai's code
+int incomingItem = 0; // Add Sai's code to loop later
 
 unsigned long lastSaveTime = 0;
 const unsigned long saveInterval = 5000; // checks to save every 5 seconds
@@ -160,6 +168,10 @@ void loop () {
         // SET EMPTY CONTAINER WEIGHT
         // --------------------------
         // SAVE EMPTY CONTAINER WEIGHT (tare + menu together)
+        // Check tare and menu buttons for empty container weight storage
+        bool tarePressed = (digitalRead(tareButton) == LOW);
+        bool menuPressed = (digitalRead(menuButton) == LOW);
+        
         static bool comboHandled = false;
 
         if (tarePressed && menuPressed && !comboHandled) {
@@ -173,7 +185,7 @@ void loop () {
                 Serial.println(containerWeights[menuIndex]);
             }
 
-            comboHandled = true; // prevent repeat spam
+            comboHandled = true; // prevent repeat
         }
 
         // Reset when buttons released
@@ -206,6 +218,8 @@ void loop () {
         
         // Read sensor and apply tare if applicable
         int weightValue = weight - tareOffset; // subtract tare
+        // Define netweight to be used for in the RED alert
+        int netWeight = weightValue - containerWeights[menuIndex];
 
         // CONTAINER MEMORY
         // ----------------
@@ -278,7 +292,7 @@ void loop () {
                 // Changes that need to be made:
                 // Add condition that RFID is not detected
                 // See if you can make the light remain on even after the container is removed from the scale until the user taps a RFID sticker
-            if (weightValue > 5) {
+            if (weightValue > 5 && menuIndex == 0) {
                 Serial.println("Weight Not Stored! Remember to tap the RFID Tag!");  // Prints out context information of what the code is doing
 
                 lcd.clear();
@@ -311,7 +325,7 @@ void loop () {
             // Input: Sensor detects a weight value that is below the threshold
             // Output: Red Blinking light
             // Output: Message on the LCD screen alternates with weight displayed
-            else if (weightValue < 500) {
+            else if (menuIndex > 0 && netWeight < thresholds[menuIndex]) {
                 Serial.println("Ingredient Weight is Below Threshold!");
                 
                 lcd.clear();
@@ -323,9 +337,9 @@ void loop () {
 
                 lcd.clear();
                 lcd.setCursor(0,0);
-                lcd.print("Weight Low!");
+                lcd.print("NetWeight =");
                 lcd.setCursor(0,1);
-                lcd.print(weightValue); // Print the scale value
+                lcd.print(netWeight); // Print the scale value
                 lcd.setCursor(15,1);
                 lcd.print("g"); // Print gram units to the last column in the row where the value is being printed
                 delay(1000);
