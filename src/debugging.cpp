@@ -202,20 +202,18 @@ void loop () {
 
         // Detect button press (HIGH → LOW transition)
         if (lastButtonState == HIGH && currentButtonState == LOW) {
-            if (currentScreen == MENU_SCREEN) {
             tareActive = !tareActive; // Toggle state
 
-                if (tareActive) {
-                    tareOffset = weight; // store current value as tare
-                    Serial.print("Tare ON. New Offset = ");
-                    Serial.println(tareOffset);
-                } else {
-                    tareOffset = 0;
-                    Serial.println("Tare OFF.");
-                }
-
-                delay(time_debounce); 
+            if (tareActive) {
+                tareOffset = weight; // store current value as tare
+                Serial.print("Tare ON. New Offset = ");
+                Serial.println(tareOffset);
+            } else {
+                tareOffset = 0;
+                Serial.println("Tare OFF.");
             }
+
+            delay(time_debounce); 
         }
         lastButtonState = currentButtonState;
         
@@ -395,15 +393,6 @@ void loop () {
             bool upReading = digitalRead(upButton);
             bool downReading = digitalRead(downButton);
 
-            // UP button pressed
-            if (lastUpButtonState == HIGH && upReading == LOW) {
-                incomingItem--;
-                if (incomingItem < 0) incomingItem = itemCount - 1;
-
-                lcd.clear();
-                delay(time_debounce); 
-            }
-
             // DOWN button pressed
             if (lastDownButtonState == HIGH && downReading == LOW) {
                 incomingItem++;
@@ -436,6 +425,15 @@ void loop () {
             lcd.print(weights[menuIndex]);
             lcd.print(" g");
 
+            if (upButton == HIGH) {
+                containerWeights[menuIndex] = weight;  // store raw weight
+
+
+                Serial.print("Saved EMPTY container weight for ");
+                Serial.print(items[menuIndex]);
+                Serial.print(" = ");
+                Serial.println(containerWeights[menuIndex]);
+            }
                 
         }
     }
