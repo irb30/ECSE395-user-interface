@@ -39,6 +39,12 @@ float weight;
 const float SLOPE = -2.4e-6;
 const float Y_INCPT = 0.683;
 
+// Container Identification
+// GPIO Pins; A2 = MSB; A0 = LSB
+const int input_one = A2;
+const int input_two = A3;
+const int input_three = A4;
+
 //Scale Instance
 HX711 scale;
 
@@ -75,20 +81,20 @@ String items[itemCount] = {
 };
 
 int containerWeights[itemCount] = {
-    0,  // No container
-    230,  // Flour
-    0,  // Almond Flour
-    0,  // GF Flour
-    0,  // Rye Flour
-    0,  // Cassava Flour
-    0,  // Cornmeal
-    0   // Sugar
+    100,  // No container
+    200,  // Flour
+    100,  // Almond Flour
+    100,  // GF Flour
+    100,  // Rye Flour
+    100,  // Cassava Flour
+    100,  // Cornmeal
+    100   // Sugar
 };
 
 // Threshold for each of the containers
 int thresholds[itemCount] = {
     0,    // No container
-    500,  // Flour
+    300,  // Flour
     500,  // Almond Flour
     500,  // GF Flour
     500, // Rye Flour
@@ -108,8 +114,9 @@ int weights[itemCount] = {
     1300   // Sugar
 };
 
-int incomingItem = 1; // Add Sai's code to loop later
+int incomingItem = 0;
 
+int guiIndex = 0;
 //Intervals
 const unsigned long time_debounce = 100;
 unsigned long currentTime = 0;
@@ -136,6 +143,11 @@ void setup() {
     pinMode(Y, OUTPUT); // This defines th pin Y as output
     pinMode(R, OUTPUT); // This defines the pin R as output
     
+    // Container Identification
+    pinMode(input_one, INPUT);
+    pinMode(input_two, INPUT);
+    pinMode(input_three, INPUT);
+
     scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN); //start scale library
 
     Serial.begin(115200); // This initializes Serial communication
@@ -176,6 +188,16 @@ void loop () {
     // lcd.backlight();
 
     if (screenOn) {
+        // Container Identification
+        int b0 = digitalRead(input_one);
+        int b1 = digitalRead(input_two);
+        int b2 = digitalRead(input_three);
+
+        // 3-bit number output
+        int incomingItem = (b2 << 2) | (b1 << 1) | b0;
+
+        Serial.println(incomingItem);
+        
         //Get current time
         unsigned long tempTime = millis();
         //Serial.println((tempTime - currentTime));
@@ -190,7 +212,7 @@ void loop () {
             // delay(200);
             weight = (float)reading * SLOPE + Y_INCPT;  //convert value
             weight = weight * 1000;
-            if (weight <= 5 && weight >= -5) {
+            if (weight <= 10 && weight >= -10) {
                 weight = 0;
             }                  //convert to grams
             // Serial.print("HX711 reading: ");
@@ -245,7 +267,7 @@ void loop () {
                 if (menuIndex > 0 && menuIndex < itemCount) {
 
                     // Check if weight hasn't changed much
-                    if (abs(weightValue - lastWeight) < 5 && weightValue > 10) {
+                    if (abs(weightValue - lastWeight) > 5 && weightValue > 10) {
                         // STORES WEIGHT
                         int netWeight = weightValue - containerWeights[menuIndex];
                         if (netWeight > 0) {
@@ -361,7 +383,7 @@ void loop () {
                         readingState = posID_low_reading;
                     }
                     lcd.setCursor(0,0);
-                    lcd.print("NetWeight =");
+                    lcd.print("NetWeight:");
                     lcd.setCursor(0,1);
                     lcd.print(netWeightChars); // Print the scale value
                     lcd.setCursor(15,1);
@@ -401,8 +423,8 @@ void loop () {
 
             // UP button pressed
             if (lastUpButtonState == HIGH && upReading == LOW) {
-                incomingItem--;
-                if (incomingItem < 0) incomingItem = itemCount - 1;
+                guiIndex--;
+                if (guiIndex < 0) guiIndex = itemCount - 1;
 
                 lcd.clear();
                 delay(time_debounce); 
@@ -410,8 +432,8 @@ void loop () {
 
             // DOWN button pressed
             if (lastDownButtonState == HIGH && downReading == LOW) {
-                incomingItem++;
-                if (incomingItem >= itemCount) incomingItem = 0;
+                guiIndex++;
+                if (guiIndex >= itemCount) guiIndex = 0;
 
                 lcd.clear();
                 delay(time_debounce);
@@ -426,7 +448,7 @@ void loop () {
             lcd.print("Select Item:");
             lcd.setCursor(0,1);
             lcd.print(">");
-            lcd.print(items[menuIndex]);
+            lcd.print(items[guiIndex]);
         }
 
         // ITEM SCREEN
@@ -434,10 +456,10 @@ void loop () {
         else if (currentScreen == ITEM_SCREEN) {
 
             lcd.setCursor(0,0);
-            lcd.print(items[menuIndex]);
+            lcd.print(items[guiIndex]);
 
             lcd.setCursor(0,1);
-            lcd.print(weights[menuIndex]);
+            lcd.print(weights[guiIndex]);
             lcd.print(" g");
 
                 
