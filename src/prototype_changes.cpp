@@ -37,7 +37,7 @@ float weight;
 
 //Calibration Function
 const float SLOPE = -2.4e-6;
-const float Y_INCPT = 0.651;  // 0.651
+const float Y_INCPT = 0.683;
 
 //Scale Instance
 HX711 scale;
@@ -162,6 +162,9 @@ void loop () {
             lcd.noBacklight();
             Serial.println("Screen OFF");
             lcd.clear();
+            digitalWrite(G,LOW);
+            digitalWrite(Y,LOW);
+            digitalWrite(R,LOW);
         }
 
         delay(time_debounce); // simple debounce
@@ -186,9 +189,12 @@ void loop () {
             // Serial.println(reading);
             // delay(200);
             weight = (float)reading * SLOPE + Y_INCPT;  //convert value
-            weight = weight * 1000;                     //convert to grams
+            weight = weight * 1000;
+            if (weight <= 5 && weight >= -5) {
+                weight = 0;
+            }                  //convert to grams
             // Serial.print("HX711 reading: ");
-            Serial.println((int)(weight*1000));
+            // Serial.println((int)(weight*1000));
         } else {
             Serial.println("HX711 not found.");
         }
