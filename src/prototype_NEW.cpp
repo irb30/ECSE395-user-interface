@@ -477,10 +477,10 @@ void loop () {
             }
         }
 
-        if (guiIndex != menuIndex) {
+        /* if (guiIndex != menuIndex) {
         lcd.setCursor(0,1);
         lcd.print("Wrong Container");
-        }
+        } */
 
         lastTareCaptureButtonState = captureReading;
 
