@@ -38,7 +38,7 @@ float weight;
 
 //Calibration Function
 const float SLOPE = -2.4e-6;
-const float Y_INCPT = 0.683;
+const float Y_INCPT = 0.653;
 
 // Container Identification
 // GPIO Pins; A2 = MSB; A0 = LSB
@@ -95,9 +95,9 @@ int containerWeights[itemCount] = {
 // Threshold for each of the containers
 int thresholds[itemCount] = {
     0,    // No container
-    300,  // Flour
+    400,  // Flour
     500,  // Almond Flour
-    500,  // GF Flour
+    100,  // GF Flour
     500, // Rye Flour
     500,  // Cassava Flour
     500,  // Cornmeal
